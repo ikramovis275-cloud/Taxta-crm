@@ -387,7 +387,7 @@ app.listen(PORT, () => {
 // Server uxlab qolmasligi uchun node-cron yordamida (Self-ping)
 // Har 3 sekundda o'zini o'zi chaqirib turadi (Cron)
 const cron = require('node-cron');
-const backendUrl = process.env.BACKEND_URL || "https://taxta-crm-1.onrender.com";
+const backendUrl = process.env.BACKEND_URL || "https://taxta-crm-2.onrender.com";
 
 cron.schedule('*/3 * * * * *', () => {
   fetch(backendUrl)

@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: 'https://taxta-crm-1.onrender.com/api',
+  baseURL: 'https://taxta-crm-2.onrender.com/api',
   headers: { 'Content-Type': 'application/json' },
 });
 
