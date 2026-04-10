@@ -384,11 +384,13 @@ app.listen(PORT, () => {
   console.log(`✅ Backend ishga tushdi: http://localhost:${PORT}`);
 });
 
-// Server uxlab qolmasligi uchun (Self-ping)
-// Har 14 daqiqada o'zini o'zi chaqirib turadi (Render 15 daqiqada uxlaydi)
+// Server uxlab qolmasligi uchun node-cron yordamida (Self-ping)
+// Har 3 sekundda o'zini o'zi chaqirib turadi (Cron)
+const cron = require('node-cron');
 const backendUrl = process.env.BACKEND_URL || "https://taxta-crm-1.onrender.com";
-setInterval(() => {
+
+cron.schedule('*/3 * * * * *', () => {
   fetch(backendUrl)
-    .then(() => console.log(">>> Self-ping muvaffaqiyatli: Server uyg'oq!"))
-    .catch((err) => console.log(">>> Self-pingda xatolik:", err.message));
-}, 14 * 60 * 1000); // 14 daqiqa
+    .then(() => console.log(">>> Self-ping (Cron) muvaffaqiyatli: Server uyg'oq! (3s)"))
+    .catch((err) => console.log(">>> Self-ping (Cron) xatolik:", err.message));
+});
