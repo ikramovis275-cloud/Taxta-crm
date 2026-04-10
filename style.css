@@ -1,0 +1,127 @@
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f9;
+    margin: 0;
+    padding: 20px;
+  }
+  
+  h1 {
+    text-align: center;
+    color: #333;
+  }
+  
+  .container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+    background: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+  }
+  
+  /* Формы */
+  form {
+    margin-bottom: 20px;
+  }
+  
+  form input[type="text"],
+  form input[type="number"],
+  form input[type="submit"] {
+    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+  }
+  
+  form input[id="in"] {
+    background-color: #28a745;
+    color: #fff;
+    border: none;    padding: 10px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 10px;
+    cursor: pointer;
+  }
+  
+  form input[id="in"]:hover {
+    background-color: #218838;
+  }
+  
+  /* Таблицы */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 20px;
+  }
+  
+  table th, table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  table th {
+    background-color: #f8f9fa;
+    color: #333;
+  }
+  
+  table tr:hover {
+    background-color: #f1f1f1;
+  }
+  
+  /* Кнопки */
+  button {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 5px;
+  }
+  
+  button:hover {
+    background-color: #0056b3;
+  }
+  
+  button:disabled {
+    background-color: #6c757d;
+    cursor: not-allowed;
+  }
+  
+  /* Всплывающее окно (Prompt) */
+  .prompt-box {
+    display: flex;
+    
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .prompt-box input,
+  .prompt-box button {
+    margin-top: 10px;
+    width: 100%;
+  }
+  
+  #search-input {
+    padding: 10px;
+    border: 1px solid #007bff;
+    border-radius: 20px;
+    margin-bottom: 20px;
+    width: 20%;
+    color: #333;
+    box-sizing: border-box;
+  }
+  
+  #search-input::placeholder{
+    color: #007bff;
+    font-size: 14px;
+  }

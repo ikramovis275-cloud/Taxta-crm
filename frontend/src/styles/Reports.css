@@ -1,0 +1,62 @@
+.reports-page { max-width: 1200px; }
+
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+.kpi-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  transition: transform 0.2s;
+}
+.kpi-card:hover { transform: translateY(-3px); }
+
+.kpi-icon {
+  width: 52px; height: 52px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem; flex-shrink: 0;
+}
+.kpi-info { display: flex; flex-direction: column; }
+.kpi-label { font-size: 0.78rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.kpi-value { font-size: 1.5rem; font-weight: 800; color: var(--text-primary); line-height: 1.2; margin-top: 0.1rem; }
+.kpi-unit { font-size: 0.78rem; color: var(--text-secondary); }
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.chart-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+}
+.chart-card.wide { grid-column: 1 / -1; }
+.chart-card h3 { font-size: 1rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--text-primary); }
+
+.top-products-list { display: flex; flex-direction: column; gap: 0.75rem; }
+.top-product-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.rank { font-weight: 700; color: var(--accent); font-size: 0.85rem; width: 24px; flex-shrink: 0; }
+.product-name-report { font-size: 0.85rem; width: 140px; flex-shrink: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.progress-bar-wrapper { flex: 1; height: 8px; background: var(--bg-secondary); border-radius: 4px; overflow: hidden; }
+.progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent), #8b5cf6); border-radius: 4px; transition: width 0.8s ease; }
+.product-sum { font-size: 0.8rem; color: var(--text-secondary); width: 100px; text-align: right; flex-shrink: 0; }
+
+@media (max-width: 768px) {
+  .charts-grid { grid-template-columns: 1fr; }
+  .chart-card.wide { grid-column: 1; }
+}
