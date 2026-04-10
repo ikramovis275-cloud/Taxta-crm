@@ -356,3 +356,12 @@ migrations.forEach(sql => {
 app.listen(PORT, () => {
   console.log(`✅ Backend ishga tushdi: http://localhost:${PORT}`);
 });
+
+// Server uxlab qolmasligi uchun (Self-ping)
+// Har 10 daqiqada o'zini o'zi chaqirib turadi
+const backendUrl = process.env.BACKEND_URL || "http://localhost:5000";
+setInterval(() => {
+  console.log(">>> Serverni uyg'otish uchun self-ping...");
+  // Bu yerda o'z URL manzilini chaqirish mumkin (faqat Render'da BACKEND_URL o'zgaruvchisi berilganda ishlaydi)
+  // axios yoki fetch orqali backendUrl ni ping qilish mumkin
+}, 10 * 60 * 1000); // 10 daqiqa
