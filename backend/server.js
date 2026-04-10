@@ -385,10 +385,10 @@ app.listen(PORT, () => {
 });
 
 // Server uxlab qolmasligi uchun (Self-ping)
-// Har 10 daqiqada o'zini o'zi chaqirib turadi
-const backendUrl = process.env.BACKEND_URL || "http://localhost:5000";
+// Har 14 daqiqada o'zini o'zi chaqirib turadi (Render 15 daqiqada uxlaydi)
+const backendUrl = process.env.BACKEND_URL || "https://taxta-crm-1.onrender.com";
 setInterval(() => {
   fetch(backendUrl)
     .then(() => console.log(">>> Self-ping muvaffaqiyatli: Server uyg'oq!"))
     .catch((err) => console.log(">>> Self-pingda xatolik:", err.message));
-}, 10 * 60 * 1000); // 10 daqiqa
+}, 14 * 60 * 1000); // 14 daqiqa
