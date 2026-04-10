@@ -75,6 +75,11 @@ db.exec(`
   );
 `);
 
+// Root route for health check
+app.get('/', (req, res) => {
+  res.send('Taxta CRM Backend point is active.');
+});
+
 // Default admin user
 const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get('1983');
 if (!existingUser) {
@@ -361,7 +366,7 @@ app.listen(PORT, () => {
 // Har 10 daqiqada o'zini o'zi chaqirib turadi
 const backendUrl = process.env.BACKEND_URL || "http://localhost:5000";
 setInterval(() => {
-  console.log(">>> Serverni uyg'otish uchun self-ping...");
-  // Bu yerda o'z URL manzilini chaqirish mumkin (faqat Render'da BACKEND_URL o'zgaruvchisi berilganda ishlaydi)
-  // axios yoki fetch orqali backendUrl ni ping qilish mumkin
+  fetch(backendUrl)
+    .then(() => console.log(">>> Self-ping muvaffaqiyatli: Server uyg'oq!"))
+    .catch((err) => console.log(">>> Self-pingda xatolik:", err.message));
 }, 10 * 60 * 1000); // 10 daqiqa
