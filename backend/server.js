@@ -3,8 +3,7 @@ console.log(">>> Backend v2.1 (Debt Management) starting...");
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const Database = require('better-sqlite3');
-const path = require('path');
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -19,7 +18,6 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
@@ -31,89 +29,98 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Handle preflight OPTIONS requests explicitly
 app.options('*', cors());
-
 app.use(express.json());
 
 // Database
-const db = new Database(path.join(__dirname, 'taxta_crm.db'));
+const pool = new Pool({
+  connectionString: 'postgresql://neondb_owner:npg_UWmLsIOx6AE0@ep-late-rain-acszph2w.sa-east-1.aws.neon.tech/neondb?sslmode=require'
+});
 
-// Create tables
-db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    email TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
-    name TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+async function initDB() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      email TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      name TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
+  
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS products (
+      id SERIAL PRIMARY KEY,
+      code TEXT UNIQUE NOT NULL,
+      name TEXT NOT NULL,
+      dimensions TEXT NOT NULL,
+      piece_volume REAL NOT NULL,
+      volume REAL NOT NULL,
+      quantity REAL NOT NULL,
+      unit TEXT NOT NULL DEFAULT 'dona',
+      cost_price_dollar REAL NOT NULL,
+      sale_price_dollar REAL NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 
-  CREATE TABLE IF NOT EXISTS products (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    code TEXT UNIQUE NOT NULL,
-    name TEXT NOT NULL,
-    dimensions TEXT NOT NULL,
-    piece_volume REAL NOT NULL,
-    volume REAL NOT NULL,
-    quantity REAL NOT NULL,
-    unit TEXT NOT NULL DEFAULT 'dona',
-    cost_price_dollar REAL NOT NULL,
-    sale_price_dollar REAL NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sales (
+      id SERIAL PRIMARY KEY,
+      client_name TEXT NOT NULL,
+      client_phone TEXT,
+      total_sum REAL NOT NULL,
+      paid_sum REAL DEFAULT 0,
+      debt_sum REAL DEFAULT 0,
+      total_dollar REAL NOT NULL,
+      usd_rate REAL NOT NULL,
+      sold_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+  `);
 
-  CREATE TABLE IF NOT EXISTS sales (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    client_name TEXT NOT NULL,
-    client_phone TEXT,
-    total_sum REAL NOT NULL,
-    paid_sum REAL DEFAULT 0,
-    debt_sum REAL DEFAULT 0,
-    total_dollar REAL NOT NULL,
-    usd_rate REAL NOT NULL,
-    sold_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS sale_items (
+      id SERIAL PRIMARY KEY,
+      sale_id INTEGER NOT NULL REFERENCES sales(id),
+      product_id INTEGER NOT NULL REFERENCES products(id),
+      product_code TEXT NOT NULL,
+      product_name TEXT NOT NULL,
+      qty REAL NOT NULL,
+      unit TEXT NOT NULL,
+      volume REAL NOT NULL,
+      price_per_unit_sum REAL NOT NULL,
+      total_sum REAL NOT NULL
+    );
+  `);
 
-  CREATE TABLE IF NOT EXISTS sale_items (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    sale_id INTEGER NOT NULL,
-    product_id INTEGER NOT NULL,
-    product_code TEXT NOT NULL,
-    product_name TEXT NOT NULL,
-    qty REAL NOT NULL,
-    unit TEXT NOT NULL,
-    volume REAL NOT NULL,
-    price_per_unit_sum REAL NOT NULL,
-    total_sum REAL NOT NULL,
-    FOREIGN KEY (sale_id) REFERENCES sales(id),
-    FOREIGN KEY (product_id) REFERENCES products(id)
-  );
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
+  `);
 
-  CREATE TABLE IF NOT EXISTS settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
-`);
+  // Default admin user
+  const { rows: users } = await pool.query('SELECT id FROM users WHERE email = $1', ['1983']);
+  if (users.length === 0) {
+    const hashedPassword = bcrypt.hashSync('1983', 10);
+    await pool.query('INSERT INTO users (email, password, name) VALUES ($1, $2, $3)', ['1983', hashedPassword, 'Admin']);
+  }
+
+  // Default USD rate
+  const { rows: rates } = await pool.query("SELECT value FROM settings WHERE key = 'usd_rate'");
+  if (rates.length === 0) {
+    await pool.query("INSERT INTO settings (key, value) VALUES ('usd_rate', '12800')");
+  }
+}
+
+initDB().catch(console.error);
 
 // Root route for health check
 app.get('/', (req, res) => {
   res.send('Taxta CRM Backend point is active.');
 });
-
-// Default admin user
-const existingUser = db.prepare('SELECT id FROM users WHERE email = ?').get('1983');
-if (!existingUser) {
-  const hashedPassword = bcrypt.hashSync('1983', 10);
-  db.prepare('INSERT INTO users (email, password, name) VALUES (?, ?, ?)').run('1983', hashedPassword, 'Admin');
-}
-
-// Default USD rate
-const existingRate = db.prepare("SELECT value FROM settings WHERE key = 'usd_rate'").get();
-if (!existingRate) {
-  db.prepare("INSERT INTO settings (key, value) VALUES ('usd_rate', '12800')").run();
-}
 
 // Auth middleware
 function authMiddleware(req, res, next) {
@@ -132,19 +139,19 @@ function authMiddleware(req, res, next) {
 }
 
 // === AUTH ROUTES ===
-app.post('/api/auth/login', (req, res) => {
-  console.log("Login request received:", req.body);
+app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-  if (!email || !password) {
-    console.log("Error: email or password missing");
-    return res.status(400).json({ error: 'Email va parol talab qilinadi' });
-  }
-  const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-  if (!user || !bcrypt.compareSync(password, user.password)) {
-    return res.status(401).json({ error: "Email yoki parol noto'g'ri" });
-  }
-  const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '24h' });
-  res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+  if (!email || !password) return res.status(400).json({ error: 'Email va parol talab qilinadi' });
+  
+  try {
+    const { rows } = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const user = rows[0];
+    if (!user || !bcrypt.compareSync(password, user.password)) {
+      return res.status(401).json({ error: "Email yoki parol noto'g'ri" });
+    }
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token, user: { id: user.id, email: user.email, name: user.name } });
+  } catch (err) { res.status(500).json({error: err.message}); }
 });
 
 app.get('/api/auth/me', authMiddleware, (req, res) => {
@@ -152,75 +159,81 @@ app.get('/api/auth/me', authMiddleware, (req, res) => {
 });
 
 // === SETTINGS ROUTES ===
-app.get('/api/settings', authMiddleware, (req, res) => {
-  const rate = db.prepare("SELECT value FROM settings WHERE key = 'usd_rate'").get();
-  res.json({ usd_rate: parseFloat(rate?.value || 12800) });
+app.get('/api/settings', authMiddleware, async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT value FROM settings WHERE key = 'usd_rate'");
+    const rate = rows[0];
+    res.json({ usd_rate: parseFloat(rate?.value || 12800) });
+  } catch (err) { res.status(500).json({error: err.message}); }
 });
 
-app.put('/api/settings/usd-rate', authMiddleware, (req, res) => {
+app.put('/api/settings/usd-rate', authMiddleware, async (req, res) => {
   const { rate } = req.body;
-  if (!rate || isNaN(rate) || rate <= 0) {
-    return res.status(400).json({ error: "To'g'ri kurs kiriting" });
-  }
-  db.prepare("INSERT OR REPLACE INTO settings (key, value) VALUES ('usd_rate', ?)").run(String(rate));
-  res.json({ usd_rate: parseFloat(rate) });
+  if (!rate || isNaN(rate) || rate <= 0) return res.status(400).json({ error: "To'g'ri kurs kiriting" });
+  try {
+    await pool.query(
+      "INSERT INTO settings (key, value) VALUES ('usd_rate', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+      [String(rate)]
+    );
+    res.json({ usd_rate: parseFloat(rate) });
+  } catch (err) { res.status(500).json({error: err.message}); }
 });
 
 // === PRODUCTS ROUTES ===
-app.get('/api/products', authMiddleware, (req, res) => {
-  const products = db.prepare('SELECT * FROM products ORDER BY name ASC').all();
-  res.json(products);
+app.get('/api/products', authMiddleware, async (req, res) => {
+  const { rows } = await pool.query('SELECT * FROM products ORDER BY name ASC');
+  res.json(rows);
 });
 
-app.post('/api/products', authMiddleware, (req, res) => {
+app.post('/api/products', authMiddleware, async (req, res) => {
   const { code, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar } = req.body;
-  if (!code || !name || !dimensions) {
-    return res.status(400).json({ error: "Barcha maydonlar to'ldirilishi shart" });
-  }
-  const existing = db.prepare('SELECT id FROM products WHERE code = ?').get(code);
-  if (existing) {
-    return res.status(400).json({ error: 'Bu koddagi mahsulot mavjud' });
-  }
-  const result = db.prepare(`
-    INSERT INTO products (code, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(code, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar);
-  const product = db.prepare('SELECT * FROM products WHERE id = ?').get(result.lastInsertRowid);
-  res.status(201).json(product);
+  if (!code || !name || !dimensions) return res.status(400).json({ error: "Barcha maydonlar to'ldirilishi shart" });
+  try {
+    const { rows: existing } = await pool.query('SELECT id FROM products WHERE code = $1', [code]);
+    if (existing.length > 0) return res.status(400).json({ error: 'Bu koddagi mahsulot mavjud' });
+    
+    const { rows } = await pool.query(`
+      INSERT INTO products (code, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *
+    `, [code, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar]);
+    
+    res.status(201).json(rows[0]);
+  } catch (err) { res.status(500).json({error: err.message}); }
 });
 
-app.put('/api/products/:id', authMiddleware, (req, res) => {
+app.put('/api/products/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar } = req.body;
-  db.prepare(`
-    UPDATE products SET name=?, dimensions=?, piece_volume=?, volume=?, quantity=?, unit=?,
-    cost_price_dollar=?, sale_price_dollar=?, updated_at=CURRENT_TIMESTAMP WHERE id=?
-  `).run(name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar, id);
-  const product = db.prepare('SELECT * FROM products WHERE id = ?').get(id);
-  res.json(product);
+  try {
+    const { rows } = await pool.query(`
+      UPDATE products SET name=$1, dimensions=$2, piece_volume=$3, volume=$4, quantity=$5, unit=$6,
+      cost_price_dollar=$7, sale_price_dollar=$8, updated_at=CURRENT_TIMESTAMP WHERE id=$9 RETURNING *
+    `, [name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar, id]);
+    res.json(rows[0]);
+  } catch (err) { res.status(500).json({error: err.message}); }
 });
 
-app.delete('/api/products/:id', authMiddleware, (req, res) => {
+app.delete('/api/products/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
-  db.prepare('DELETE FROM products WHERE id = ?').run(id);
+  await pool.query('DELETE FROM products WHERE id = $1', [id]);
   res.json({ message: "Mahsulot o'chirildi" });
 });
 
 // === SALES ROUTES ===
-app.get('/api/sales', authMiddleware, (req, res) => {
-  const sales = db.prepare('SELECT * FROM sales ORDER BY sold_at DESC').all();
-  const result = sales.map(sale => {
-    const items = db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(sale.id);
-    return { ...sale, items };
-  });
-  res.json(result);
+app.get('/api/sales', authMiddleware, async (req, res) => {
+  try {
+    const { rows: sales } = await pool.query('SELECT * FROM sales ORDER BY sold_at DESC');
+    for (let sale of sales) {
+      const { rows: items } = await pool.query('SELECT * FROM sale_items WHERE sale_id = $1', [sale.id]);
+      sale.items = items;
+    }
+    res.json(sales);
+  } catch (err) { res.status(500).json({error: err.message}); }
 });
 
-app.post('/api/sales', authMiddleware, (req, res) => {
+app.post('/api/sales', authMiddleware, async (req, res) => {
   const { client_name, client_phone, items, usd_rate, paid_sum } = req.body;
-  if (!client_name || !items || items.length === 0) {
-    return res.status(400).json({ error: "Klient ismi va mahsulotlar talab qilinadi" });
-  }
+  if (!client_name || !items || items.length === 0) return res.status(400).json({ error: "Klient ismi va mahsulotlar talab qilinadi" });
 
   let totalSum = 0;
   items.forEach(item => { totalSum += Number(item.total_sum) || 0; });
@@ -231,166 +244,154 @@ app.post('/api/sales', authMiddleware, (req, res) => {
   const numPaid = Number(paid_sum) || 0;
   const numDebtSum = numTotalSum - numPaid;
 
-  const saleResult = db.prepare(`
-    INSERT INTO sales (client_name, client_phone, total_sum, paid_sum, debt_sum, total_dollar, usd_rate)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(client_name, client_phone, numTotalSum, numPaid, numDebtSum, numTotalDollar, numUsdRate);
+  try {
+    const { rows: saleRows } = await pool.query(`
+      INSERT INTO sales (client_name, client_phone, total_sum, paid_sum, debt_sum, total_dollar, usd_rate)
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
+    `, [client_name, client_phone, numTotalSum, numPaid, numDebtSum, numTotalDollar, numUsdRate]);
 
-  const saleId = saleResult.lastInsertRowid;
+    const saleId = saleRows[0].id;
 
-  for (const item of items) {
-    const numQty = Number(item.qty) || 0;
-    const numVol = Number(item.volume) || 0;
-    const numPrice = Number(item.price_per_unit_sum) || 0;
-    const itemTotal = Number(item.total_sum) || 0;
+    for (const item of items) {
+      const numQty = Number(item.qty) || 0;
+      const numVol = Number(item.volume) || 0;
+      const numPrice = Number(item.price_per_unit_sum) || 0;
+      const itemTotal = Number(item.total_sum) || 0;
 
-    db.prepare(`
-      INSERT INTO sale_items (sale_id, product_id, product_code, product_name, qty, unit, volume, price_per_unit_sum, total_sum)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(saleId, item.product_id, item.product_code, item.product_name, numQty, item.unit, numVol, numPrice, itemTotal);
+      await pool.query(`
+        INSERT INTO sale_items (sale_id, product_id, product_code, product_name, qty, unit, volume, price_per_unit_sum, total_sum)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [saleId, item.product_id, item.product_code, item.product_name, numQty, item.unit, numVol, numPrice, itemTotal]);
 
-    // Ombordan ayirish
-    const product = db.prepare('SELECT * FROM products WHERE id = ?').get(item.product_id);
-    if (product) {
-      const newQty = product.quantity - numQty;
-      const newVolume = product.volume - numVol;
-      if (newQty <= 0) {
-        db.prepare('DELETE FROM products WHERE id = ?').run(item.product_id);
-      } else {
-        db.prepare('UPDATE products SET quantity=?, volume=?, updated_at=CURRENT_TIMESTAMP WHERE id=?')
-          .run(newQty, newVolume, item.product_id);
+      const { rows: productRows } = await pool.query('SELECT * FROM products WHERE id = $1', [item.product_id]);
+      const product = productRows[0];
+      if (product) {
+        const newQty = product.quantity - numQty;
+        const newVolume = product.volume - numVol;
+        if (newQty <= 0) {
+          await pool.query('DELETE FROM products WHERE id = $1', [item.product_id]);
+        } else {
+          await pool.query('UPDATE products SET quantity=$1, volume=$2, updated_at=CURRENT_TIMESTAMP WHERE id=$3',
+            [newQty, newVolume, item.product_id]);
+        }
       }
     }
-  }
 
-  const sale = db.prepare('SELECT * FROM sales WHERE id = ?').get(saleId);
-  const saleItems = db.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(saleId);
-  res.status(201).json({ ...sale, items: saleItems });
+    const { rows: createdSale } = await pool.query('SELECT * FROM sales WHERE id = $1', [saleId]);
+    const { rows: saleItems } = await pool.query('SELECT * FROM sale_items WHERE sale_id = $1', [saleId]);
+    res.status(201).json({ ...createdSale[0], items: saleItems });
+  } catch (err) { res.status(500).json({error: err.message}); }
 });
 
-app.delete('/api/sales/:id', authMiddleware, (req, res) => {
+app.delete('/api/sales/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
-  db.prepare('DELETE FROM sale_items WHERE sale_id = ?').run(id);
-  db.prepare('DELETE FROM sales WHERE id = ?').run(id);
+  await pool.query('DELETE FROM sale_items WHERE sale_id = $1', [id]);
+  await pool.query('DELETE FROM sales WHERE id = $1', [id]);
   res.json({ message: "Sotuv o'chirildi" });
 });
 
-app.put('/api/sales/:id', authMiddleware, (req, res) => {
+app.put('/api/sales/:id', authMiddleware, async (req, res) => {
   const { id } = req.params;
   const { paid_sum } = req.body;
 
-  const sale = db.prepare('SELECT total_sum FROM sales WHERE id = ?').get(id);
-  if (!sale) return res.status(404).json({ error: "Sotuv topilmadi" });
+  try {
+    const { rows } = await pool.query('SELECT total_sum FROM sales WHERE id = $1', [id]);
+    const sale = rows[0];
+    if (!sale) return res.status(404).json({ error: "Sotuv topilmadi" });
 
-  const numPaid = Number(paid_sum);
-  const debtSum = sale.total_sum - numPaid;
+    const numPaid = Number(paid_sum);
+    const debtSum = sale.total_sum - numPaid;
 
-  db.prepare('UPDATE sales SET paid_sum = ?, debt_sum = ? WHERE id = ?')
-    .run(numPaid, debtSum, id);
+    await pool.query('UPDATE sales SET paid_sum = $1, debt_sum = $2 WHERE id = $3', [numPaid, debtSum, id]);
 
-  res.json({ message: "To'lov yangilandi", paid_sum: numPaid, debt_sum: debtSum });
+    res.json({ message: "To'lov yangilandi", paid_sum: numPaid, debt_sum: debtSum });
+  } catch (err) { res.status(500).json({error: err.message}); }
 });
 
-app.post('/api/sales/:id/return', authMiddleware, (req, res) => {
-  const { id } = req.params; // sale_id
+app.post('/api/sales/:id/return', authMiddleware, async (req, res) => {
+  const { id } = req.params; 
   const { item_id, return_qty, return_volume } = req.body;
 
-  const item = db.prepare('SELECT * FROM sale_items WHERE id = ? AND sale_id = ?').get(item_id, id);
-  if (!item) return res.status(404).json({ error: "Mahsulot topilmadi" });
+  try {
+    const { rows: itemRows } = await pool.query('SELECT * FROM sale_items WHERE id = $1 AND sale_id = $2', [item_id, id]);
+    const item = itemRows[0];
+    if (!item) return res.status(404).json({ error: "Mahsulot topilmadi" });
 
-  const rQty = parseFloat(return_qty);
-  const rVol = parseFloat(return_volume);
+    const rQty = parseFloat(return_qty);
+    const rVol = parseFloat(return_volume);
 
-  if (rQty > item.qty) return res.status(400).json({ error: "Qaytarish miqdori sotilganidan ko'p" });
+    if (rQty > item.qty) return res.status(400).json({ error: "Qaytarish miqdori sotilganidan ko'p" });
 
-  // 1. Omborni yangilash
-  const product = db.prepare('SELECT * FROM products WHERE id = ?').get(item.product_id);
-  if (product) {
-    db.prepare('UPDATE products SET quantity = quantity + ?, volume = volume + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-      .run(rQty, rVol, item.product_id);
-  } else {
-    // Agar mahsulot o'chirib tashlangan bo'lsa, qayta yaratish (ixtiyoriy, lekin yaxshi)
-    // Bu misolda biz faqat mavjud bo'lsa yangilaymiz.
-  }
+    await pool.query('UPDATE products SET quantity = quantity + $1, volume = volume + $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+      [rQty, rVol, item.product_id]);
 
-  // 2. Sale Item ni yangilash yoki o'chirish
-  const newQty = item.qty - rQty;
-  const newVol = item.volume - rVol;
-  const refundAmount = rQty * item.price_per_unit_sum;
+    const newQty = item.qty - rQty;
+    const newVol = item.volume - rVol;
+    const refundAmount = rQty * item.price_per_unit_sum;
 
-  if (newQty <= 0) {
-    db.prepare('DELETE FROM sale_items WHERE id = ?').run(item_id);
-  } else {
-    db.prepare('UPDATE sale_items SET qty = ?, volume = ?, total_sum = total_sum - ? WHERE id = ?')
-      .run(newQty, newVol, refundAmount, item_id);
-  }
+    if (newQty <= 0) {
+      await pool.query('DELETE FROM sale_items WHERE id = $1', [item_id]);
+    } else {
+      await pool.query('UPDATE sale_items SET qty = $1, volume = $2, total_sum = total_sum - $3 WHERE id = $4',
+        [newQty, newVol, refundAmount, item_id]);
+    }
 
-  // 3. Sale jami summasini va qarzini yangilash
-  const sale = db.prepare('SELECT * FROM sales WHERE id = ?').get(id);
-  const newTotalSum = sale.total_sum - refundAmount;
-  const newTotalDollar = newTotalSum / sale.usd_rate;
+    const { rows: saleRows } = await pool.query('SELECT * FROM sales WHERE id = $1', [id]);
+    const sale = saleRows[0];
+    const newTotalSum = sale.total_sum - refundAmount;
+    const newTotalDollar = newTotalSum / sale.usd_rate;
 
-  let newPaidSum = sale.paid_sum;
-  let newDebtSum = sale.debt_sum - refundAmount;
+    let newPaidSum = sale.paid_sum;
+    let newDebtSum = sale.debt_sum - refundAmount;
 
-  if (newDebtSum < 0) {
-    newPaidSum += newDebtSum;
-    newDebtSum = 0;
-  }
+    if (newDebtSum < 0) {
+      newPaidSum += newDebtSum;
+      newDebtSum = 0;
+    }
 
-  db.prepare('UPDATE sales SET total_sum = ?, total_dollar = ?, paid_sum = ?, debt_sum = ? WHERE id = ?')
-    .run(newTotalSum, newTotalDollar, newPaidSum, newDebtSum, id);
+    await pool.query('UPDATE sales SET total_sum = $1, total_dollar = $2, paid_sum = $3, debt_sum = $4 WHERE id = $5',
+      [newTotalSum, newTotalDollar, newPaidSum, newDebtSum, id]);
 
-  res.json({ message: "Mahsulot qaytarildi", new_total: newTotalSum });
+    res.json({ message: "Mahsulot qaytarildi", new_total: newTotalSum });
+  } catch (err) { res.status(500).json({error: err.message}); }
 });
-
 
 // Stats
-app.get('/api/stats', authMiddleware, (req, res) => {
-  const totalProducts = db.prepare('SELECT COUNT(*) as count FROM products').get();
-  const totalSalesCount = db.prepare('SELECT COUNT(*) as count FROM sales').get();
-  const totalRevenue = db.prepare('SELECT COALESCE(SUM(total_sum), 0) as sum FROM sales').get();
-  const totalVolume = db.prepare('SELECT COALESCE(SUM(volume), 0) as vol FROM products').get();
+app.get('/api/stats', authMiddleware, async (req, res) => {
+  try {
+    const { rows: prodRows } = await pool.query('SELECT COUNT(*) as count FROM products');
+    const { rows: salesCountRows } = await pool.query('SELECT COUNT(*) as count FROM sales');
+    const { rows: revRows } = await pool.query('SELECT COALESCE(SUM(total_sum), 0) as sum FROM sales');
+    const { rows: volRows } = await pool.query('SELECT COALESCE(SUM(volume), 0) as vol FROM products');
 
-  const dailySales = db.prepare(`
-    SELECT DATE(sold_at) as date, SUM(total_sum) as total, COUNT(*) as count
-    FROM sales
-    GROUP BY DATE(sold_at)
-    ORDER BY date DESC
-    LIMIT 30
-  `).all();
+    const { rows: dailySales } = await pool.query(`
+      SELECT DATE(sold_at) as date, SUM(total_sum) as total, COUNT(*) as count
+      FROM sales
+      GROUP BY DATE(sold_at)
+      ORDER BY date DESC
+      LIMIT 30
+    `);
 
-  res.json({
-    totalProducts: totalProducts.count,
-    totalSales: totalSalesCount.count,
-    totalRevenue: totalRevenue.sum,
-    totalVolume: totalVolume.vol,
-    dailySales
-  });
-});
-
-// Run migrations safely
-const migrations = [
-  "ALTER TABLE sales ADD COLUMN client_phone TEXT",
-  "ALTER TABLE sales ADD COLUMN paid_sum REAL DEFAULT 0",
-  "ALTER TABLE sales ADD COLUMN debt_sum REAL DEFAULT 0"
-];
-
-migrations.forEach(sql => {
-  try { db.prepare(sql).run(); } catch (e) { }
+    res.json({
+      totalProducts: parseInt(prodRows[0].count || 0),
+      totalSales: parseInt(salesCountRows[0].count || 0),
+      totalRevenue: parseFloat(revRows[0].sum || 0),
+      totalVolume: parseFloat(volRows[0].vol || 0),
+      dailySales: dailySales.map(d => ({...d, total: parseFloat(d.total), count: parseInt(d.count)}))
+    });
+  } catch (err) { res.status(500).json({error: err.message}); }
 });
 
 app.listen(PORT, () => {
-  console.log(`✅ Backend ishga tushdi: http://localhost:${PORT}`);
+  console.log(\`✅ Backend ishga tushdi: http://localhost:\${PORT}\`);
 });
 
 // Server uxlab qolmasligi uchun node-cron yordamida (Self-ping)
-// Har 3 sekundda o'zini o'zi chaqirib turadi (Cron)
 const cron = require('node-cron');
 const backendUrl = process.env.BACKEND_URL || "https://taxta-crm-2.onrender.com";
 
 cron.schedule('*/3 * * * * *', () => {
   fetch(backendUrl)
     .then(() => console.log(">>> Self-ping (Cron) muvaffaqiyatli: Server uyg'oq! (3s)"))
-    .catch((err) => console.log(">>> Self-ping (Cron) xatolik:", err.message));
+    .catch((err) => {});
 });
