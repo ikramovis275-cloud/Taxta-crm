@@ -5,7 +5,7 @@ exports.getProducts = async (req, res) => {
     const { rows } = await db.query('SELECT * FROM products ORDER BY name ASC');
     res.json(rows);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Mahsulotlarni yuklashda xatolik: " + err.message });
   }
 };
 

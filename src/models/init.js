@@ -86,9 +86,8 @@ const initModels = async () => {
 
     console.log('✅ Ma\'lumotlar bazasi jadvallari va admin tekshirildi.');
   } catch (err) {
-    if (!(process.env.RENDER || process.env.NODE_ENV === 'production')) {
-      console.error('❌ Modelni yuklashda xatolik:', err);
-    }
+    console.error('❌ Modelni yuklashda (Table creation) xatolik:', err.message);
+    throw err; // Xatoni yuqoriga uzatamiz
   }
 };
 

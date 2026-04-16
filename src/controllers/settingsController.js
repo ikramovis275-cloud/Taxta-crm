@@ -6,7 +6,7 @@ exports.getSettings = async (req, res) => {
     const rate = rows[0];
     res.json({ usd_rate: parseFloat(rate?.value || 12800) });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Sozlamalarni yuklashda xatolik: " + err.message });
   }
 };
 
@@ -20,6 +20,6 @@ exports.updateUsdRate = async (req, res) => {
     );
     res.json({ usd_rate: parseFloat(rate) });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: "Kursni yangilashda xatolik: " + err.message });
   }
 };
