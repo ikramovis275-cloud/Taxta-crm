@@ -2,6 +2,11 @@ const { Client } = require('pg');
 require('dotenv').config();
 
 const ensureDatabaseExists = async () => {
+  // Agar Renderda (Production) bo'lsa, bazani tekshirib o'tirmaymiz
+  if (process.env.NODE_ENV === 'production') {
+    return console.log('✅ Production rejim: Baza tekshiruvi o\'tkazib yuborildi.');
+  }
+
   const dbName = process.env.DB_NAME;
 
   // Postgres default bazasiga ulanamiz (yangi baza yaratish uchun)
