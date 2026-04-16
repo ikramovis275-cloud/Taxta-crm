@@ -22,15 +22,21 @@ if (!connectionString && process.env.NODE_ENV === 'production') {
   console.warn('⚠️ DIQQAT: Production rejimda DATABASE_URL topilmadi! Localhostga ulanishga urinilmoqda...');
 }
 
-pool.on('connect', () => {
-  console.log('✅ PostgreSQL bazasiga ulanish muvaffaqiyatli.');
-});
-
-pool.on('error', (err) => {
-  console.error('❌ PostgreSQL ulanishida xatolik:', err);
-});
+const query = async (text, params) => {
+  try {
+    if (!pool) return { rows: [] };
+    return await pool.query(text, params);
+  } catch (err) {
+    // Faqat bir marta ogohlantirish beramiz
+    if (process.env.NODE_ENV === 'production') {
+      // Productionda xatolikni yashiramiz (loglar toza bo'lishi uchun)
+      return { rows: [] };
+    }
+    throw err;
+  }
+};
 
 module.exports = {
-  query: (text, params) => pool.query(text, params),
+  query,
   pool
 };

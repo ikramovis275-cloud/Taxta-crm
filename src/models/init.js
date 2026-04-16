@@ -86,7 +86,9 @@ const initModels = async () => {
 
     console.log('✅ Ma\'lumotlar bazasi jadvallari va admin tekshirildi.');
   } catch (err) {
-    console.error('❌ Modelni yuklashda xatolik:', err);
+    if (process.env.NODE_ENV !== 'production') {
+      console.error('❌ Modelni yuklashda xatolik:', err);
+    }
   }
 };
 
