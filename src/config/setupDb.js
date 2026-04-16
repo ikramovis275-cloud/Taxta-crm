@@ -2,9 +2,14 @@ const { Client } = require('pg');
 require('dotenv').config();
 
 const ensureDatabaseExists = async () => {
-  // Agar Renderda (Production) bo'lsa, bazani tekshirib o'tirmaymiz
-  if (process.env.NODE_ENV === 'production') {
-    return console.log('✅ Production rejim: Baza tekshiruvi o\'tkazib yuborildi.');
+  // Agar DATABASE_URL bo'lsa (Render/Cloud) yoki NODE_ENV production bo'lsa - darhol to'xtatamiz
+  if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production') {
+    return; 
+  }
+
+  // Faqat localhostda ishlaydi
+  if (process.env.DB_HOST !== 'localhost' && process.env.DB_HOST !== '127.0.0.1') {
+    return;
   }
 
   const dbName = process.env.DB_NAME;
