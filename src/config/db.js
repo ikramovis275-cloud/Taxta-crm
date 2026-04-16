@@ -1,11 +1,13 @@
 const { Pool } = require('pg');
 require('dotenv').config();
 
+const connectionString = process.env.DATABASE_URL || process.env.PGURL || process.env.URL;
+
 const pool = new Pool(
-  process.env.DATABASE_URL 
+  connectionString 
   ? { 
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false } // Cloud (Render/Neon) uchun shart
+      connectionString: connectionString,
+      ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false }
     }
   : {
       user: process.env.DB_USER,
@@ -15,6 +17,10 @@ const pool = new Pool(
       port: process.env.DB_PORT,
     }
 );
+
+if (!connectionString && process.env.NODE_ENV === 'production') {
+  console.warn('⚠️ DIQQAT: Production rejimda DATABASE_URL topilmadi! Localhostga ulanishga urinilmoqda...');
+}
 
 pool.on('connect', () => {
   console.log('✅ PostgreSQL bazasiga ulanish muvaffaqiyatli.');
