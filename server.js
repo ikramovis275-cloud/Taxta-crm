@@ -53,7 +53,7 @@ const start = async () => {
     });
   } catch (err) {
     console.error('❌ Serverni boshlashda xatolik:', err);
-    process.exit(1);
+    // process.exit(1);
   }
 };
 

@@ -38,11 +38,11 @@ const ensureDatabaseExists = async () => {
     }
   } catch (err) {
     if (err.code === '28P01') {
-      console.error('❌ Xatolik: PostgreSQL paroli noto\'g\'ri! .env faylidagi DB_PASSWORD ni tekshiring.');
+      console.error('❌ Xatolik: PostgreSQL paroli noto\'g\'ri!');
     } else {
       console.error('❌ Bazani tekshirishda xatolik:', err.message);
     }
-    process.exit(1);
+    // process.exit(1); // O'chirib tashlaymiz
   } finally {
     await client.end();
   }
