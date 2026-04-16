@@ -25,12 +25,15 @@ if (connectionString) {
 }
 
 const query = async (text, params) => {
+  if (!connectionString && (process.env.RENDER || process.env.NODE_ENV === 'production')) {
+    console.error("❌ Baza ulanmagan! DATABASE_URL topilmadi.");
+    return { rows: [], error: 'Database disconnected' };
+  }
   try {
-    if (!pool) return { rows: [] };
     return await pool.query(text, params);
   } catch (err) {
     if (process.env.RENDER || process.env.NODE_ENV === 'production') {
-      return { rows: [] };
+      return { rows: [], error: err.message };
     }
     throw err;
   }
