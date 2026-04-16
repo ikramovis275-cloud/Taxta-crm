@@ -18,8 +18,8 @@ const pool = new Pool(
     }
 );
 
-if (!connectionString && process.env.NODE_ENV === 'production') {
-  console.warn('⚠️ DIQQAT: Production rejimda DATABASE_URL topilmadi! Localhostga ulanishga urinilmoqda...');
+if (!connectionString && (process.env.RENDER || process.env.NODE_ENV === 'production')) {
+  // Renderda ogohlantirishni ko'rsatmaymiz
 }
 
 const query = async (text, params) => {
@@ -27,9 +27,7 @@ const query = async (text, params) => {
     if (!pool) return { rows: [] };
     return await pool.query(text, params);
   } catch (err) {
-    // Faqat bir marta ogohlantirish beramiz
-    if (process.env.NODE_ENV === 'production') {
-      // Productionda xatolikni yashiramiz (loglar toza bo'lishi uchun)
+    if (process.env.RENDER || process.env.NODE_ENV === 'production') {
       return { rows: [] };
     }
     throw err;

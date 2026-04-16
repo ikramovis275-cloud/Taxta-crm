@@ -2,8 +2,8 @@ const { Client } = require('pg');
 require('dotenv').config();
 
 const ensureDatabaseExists = async () => {
-  // Agar DATABASE_URL bo'lsa (Render/Cloud) yoki NODE_ENV production bo'lsa - darhol to'xtatamiz
-  if (process.env.DATABASE_URL || process.env.NODE_ENV === 'production') {
+  // Agar Renderda bo'lsak yoki DATABASE_URL bo'lsa - hech narsani tekshirmaymiz
+  if (process.env.RENDER || process.env.DATABASE_URL || process.env.NODE_ENV === 'production') {
     return; 
   }
 
