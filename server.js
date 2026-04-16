@@ -49,7 +49,7 @@ const start = async () => {
     cron.schedule('*/3 * * * * *', () => {
       fetch(backendUrl)
         .then(() => console.log("📡 [Cron] Self-ping muvaffaqiyatli (3s)"))
-        .catch((err) => {});
+        .catch((err) => { });
     });
   } catch (err) {
     console.error('❌ Serverni boshlashda xatolik:', err);

@@ -18,8 +18,10 @@ const pool = new Pool(
     }
 );
 
-if (!connectionString && (process.env.RENDER || process.env.NODE_ENV === 'production')) {
-  // Renderda ogohlantirishni ko'rsatmaymiz
+if (connectionString) {
+  console.log('📡 Ma\'lumotlar bazasiga ulanishga urinilmoqda...');
+} else if (process.env.RENDER || process.env.NODE_ENV === 'production') {
+  console.warn('❌ DIQQAT: DATABASE_URL topilmadi! Render-da baza ulanmagan.');
 }
 
 const query = async (text, params) => {

@@ -8,6 +8,7 @@ exports.login = async (req, res) => {
 
   try {
     const { rows } = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    console.log(`👤 Login urinishi: ${email}, Bazadan topildi: ${rows.length} ta foydalanuvchi`);
     const user = rows[0];
     
     if (!user || !bcrypt.compareSync(password, user.password)) {
