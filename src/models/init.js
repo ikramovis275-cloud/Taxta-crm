@@ -1,93 +1,91 @@
 const db = require('../config/db');
+const bcrypt = require('bcryptjs');
 
 const initModels = async () => {
   try {
-    // Users table
+    // Users
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        name TEXT NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+        password TEXT NOT NULL
+      )
     `);
 
-    // Products table
+    // Products
     await db.query(`
       CREATE TABLE IF NOT EXISTS products (
         id SERIAL PRIMARY KEY,
         code TEXT UNIQUE NOT NULL,
         name TEXT NOT NULL,
-        dimensions TEXT NOT NULL,
-        piece_volume REAL NOT NULL,
-        volume REAL NOT NULL,
-        quantity REAL NOT NULL,
-        unit TEXT NOT NULL DEFAULT 'dona',
-        cost_price_dollar REAL NOT NULL,
-        sale_price_dollar REAL NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+        dimensions TEXT,
+        piece_volume REAL,
+        volume REAL DEFAULT 0,
+        quantity REAL DEFAULT 0,
+        unit TEXT DEFAULT 'dona',
+        cost_price_dollar REAL DEFAULT 0,
+        sale_price_dollar REAL DEFAULT 0,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
     `);
 
-    // Sales table
+    // Sales
     await db.query(`
       CREATE TABLE IF NOT EXISTS sales (
         id SERIAL PRIMARY KEY,
         client_name TEXT NOT NULL,
         client_phone TEXT,
-        total_sum REAL NOT NULL,
+        total_sum REAL DEFAULT 0,
         paid_sum REAL DEFAULT 0,
         debt_sum REAL DEFAULT 0,
-        total_dollar REAL NOT NULL,
-        usd_rate REAL NOT NULL,
+        usd_rate REAL DEFAULT 12800,
         sold_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
+      )
     `);
 
-    // Sale items table
+    // Sale Items
     await db.query(`
       CREATE TABLE IF NOT EXISTS sale_items (
         id SERIAL PRIMARY KEY,
-        sale_id INTEGER NOT NULL REFERENCES sales(id) ON DELETE CASCADE,
-        product_id INTEGER REFERENCES products(id) ON DELETE SET NULL,
-        product_code TEXT NOT NULL,
-        product_name TEXT NOT NULL,
-        qty REAL NOT NULL,
-        unit TEXT NOT NULL,
-        volume REAL NOT NULL,
-        price_per_unit_sum REAL NOT NULL,
-        total_sum REAL NOT NULL
-      );
+        sale_id INTEGER,
+        product_id INTEGER,
+        product_code TEXT,
+        product_name TEXT,
+        qty REAL,
+        unit TEXT,
+        volume REAL,
+        price_per_unit_sum REAL,
+        total_sum REAL,
+        returned_qty REAL DEFAULT 0
+      )
     `);
 
-    // Settings table
+    // Settings
     await db.query(`
       CREATE TABLE IF NOT EXISTS settings (
         key TEXT PRIMARY KEY,
-        value TEXT NOT NULL
-      );
+        value TEXT
+      )
     `);
 
-    const bcrypt = require('bcryptjs');
+    // Admin user 1983
     const hashedPassword = bcrypt.hashSync('1983', 10);
     await db.query(`
-      INSERT INTO users (email, password, name) 
-      VALUES ($1, $2, $3) 
-      ON CONFLICT (email) DO UPDATE SET password = EXCLUDED.password
-    `, ['1983', hashedPassword, 'Admin']);
+      INSERT INTO users (email, password) 
+      VALUES ('1983', $1) 
+      ON CONFLICT (email) DO NOTHING
+    `, [hashedPassword]);
 
-    // Default USD rate
-    const { rows: rates } = await db.query("SELECT value FROM settings WHERE key = 'usd_rate'");
-    if (rates.length === 0) {
-      await db.query("INSERT INTO settings (key, value) VALUES ('usd_rate', '12800')");
-    }
+    // Default USD Rate
+    await db.query(`
+      INSERT INTO settings (key, value) 
+      VALUES ('usd_rate', '12800') 
+      ON CONFLICT (key) DO NOTHING
+    `);
 
-    console.log('✅ Ma\'lumotlar bazasi jadvallari va admin tekshirildi.');
+    console.log('✅ [DB] Barcha jadvallar va boshlang\'ich ma\'lumotlar tayyor.');
   } catch (err) {
-    console.error('❌ Modelni yuklashda (Table creation) xatolik:', err.message);
-    throw err; // Xatoni yuqoriga uzatamiz
+    console.error('❌ [DB] Init hatosi:', err.message);
   }
 };
 

@@ -6,31 +6,30 @@ const productController = require('../controllers/productController');
 const saleController = require('../controllers/saleController');
 const statsController = require('../controllers/statsController');
 const settingsController = require('../controllers/settingsController');
+const authMiddleware = require('../config/auth');
 
-const auth = require('../config/auth');
-
-// Auth
+// Public
 router.post('/auth/login', authController.login);
-router.get('/auth/me', auth, authController.getMe);
+
+// Private (Token kerak)
+router.use(authMiddleware);
 
 // Products
-router.get('/products', auth, productController.getProducts);
-router.post('/products', auth, productController.createProduct);
-router.put('/products/:id', auth, productController.updateProduct);
-router.delete('/products/:id', auth, productController.deleteProduct);
+router.get('/products', productController.getProducts);
+router.post('/products', productController.createProduct);
+router.put('/products/:id', productController.updateProduct);
+router.delete('/products/:id', productController.deleteProduct);
 
 // Sales
-router.get('/sales', auth, saleController.getSales);
-router.post('/sales', auth, saleController.createSale);
-router.put('/sales/:id', auth, saleController.updateSalePayment);
-router.post('/sales/:id/return', auth, saleController.returnItem);
-router.delete('/sales/:id', auth, saleController.deleteSale);
+router.get('/sales', saleController.getSales);
+router.post('/sales', saleController.createSale);
+router.put('/sales/:id', saleController.updateSale);
+router.delete('/sales/:id', saleController.deleteSale);
+router.post('/sales/:id/return', saleController.returnItem);
 
-// Stats
-router.get('/stats', auth, statsController.getStats);
-
-// Settings
-router.get('/settings', auth, settingsController.getSettings);
-router.put('/settings/usd-rate', auth, settingsController.updateUsdRate);
+// Stats & Settings
+router.get('/stats', statsController.getStats);
+router.get('/settings', settingsController.getSettings);
+router.put('/settings/usd-rate', settingsController.updateUsdRate);
 
 module.exports = router;
