@@ -25,6 +25,7 @@ exports.createProduct = async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *
     `, [code, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar]);
 
+    if (!rows[0]) throw new Error("Mahsulotni saqlashda xatolik yuz berdi");
     res.status(201).json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: err.message });
