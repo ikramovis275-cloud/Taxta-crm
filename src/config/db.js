@@ -96,6 +96,20 @@ const query = async (text, params) => {
     return { rows: [{ count: memory_storage.sales.length, total, paid, debt }] };
   }
 
+  // 4. Deletions
+  if (cmd.includes('DELETE FROM PRODUCTS')) {
+    memory_storage.products = memory_storage.products.filter(x => x.id != params[0]);
+    return { rows: [], rowCount: 1 };
+  }
+  if (cmd.includes('DELETE FROM SALES')) {
+    memory_storage.sales = memory_storage.sales.filter(x => x.id != params[0]);
+    return { rows: [], rowCount: 1 };
+  }
+  if (cmd.includes('DELETE FROM SALE_ITEMS')) {
+    memory_storage.sale_items = memory_storage.sale_items.filter(x => x.sale_id != params[0]);
+    return { rows: [], rowCount: 1 };
+  }
+
   return { rows: [], rowCount: 0 };
 };
 
