@@ -27,11 +27,12 @@ exports.updateProduct = async (req, res) => {
   const { id } = req.params;
   const { name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar } = req.body;
   try {
-    const { rows } = await db.query(`
+    await db.query(`
       UPDATE products SET name=$1, dimensions=$2, piece_volume=$3, volume=$4, quantity=$5, unit=$6, cost_price_dollar=$7, sale_price_dollar=$8
-      WHERE id=$9 RETURNING *
+      WHERE id=$9
     `, [name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar, id]);
-    res.json(rows[0]);
+    
+    res.json({ id, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

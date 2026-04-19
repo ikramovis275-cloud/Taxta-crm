@@ -59,15 +59,18 @@ const query = async (text, params) => {
     return { rows: [newP] };
   }
   if (cmd.includes('UPDATE PRODUCTS')) {
-    const p = memory_storage.products.find(x => x.id === params[params.length-1]);
+    const idToFind = params[params.length - 1];
+    const p = memory_storage.products.find(x => String(x.id) === String(idToFind));
     if (p) {
       if (cmd.includes('QUANTITY = QUANTITY -')) { // Sale update
         p.quantity -= params[0]; p.volume -= params[1];
+      } else if (cmd.includes('QUANTITY = QUANTITY +')) { // Return/Delete update
+        p.quantity += params[0]; p.volume += params[1];
       } else { // Generic update
         p.name=params[0]; p.dimensions=params[1]; p.piece_volume=params[2]; p.volume=params[3]; p.quantity=params[4]; p.unit=params[5]; p.cost_price_dollar=params[6]; p.sale_price_dollar=params[7];
       }
     }
-    return { rows: [p], rowCount: 1 };
+    return { rows: [p], rowCount: p ? 1 : 0 };
   }
 
   // 2. Sales
@@ -83,7 +86,7 @@ const query = async (text, params) => {
     return { rows: [item] };
   }
   if (cmd.includes('SELECT * FROM SALE_ITEMS')) {
-    return { rows: memory_storage.sale_items.filter(x => x.sale_id === params[0]) };
+    return { rows: memory_storage.sale_items.filter(x => String(x.sale_id) === String(params[0])) };
   }
 
   // 3. Stats & Settings
@@ -98,15 +101,15 @@ const query = async (text, params) => {
 
   // 4. Deletions
   if (cmd.includes('DELETE FROM PRODUCTS')) {
-    memory_storage.products = memory_storage.products.filter(x => x.id != params[0]);
+    memory_storage.products = memory_storage.products.filter(x => String(x.id) !== String(params[0]));
     return { rows: [], rowCount: 1 };
   }
   if (cmd.includes('DELETE FROM SALES')) {
-    memory_storage.sales = memory_storage.sales.filter(x => x.id != params[0]);
+    memory_storage.sales = memory_storage.sales.filter(x => String(x.id) !== String(params[0]));
     return { rows: [], rowCount: 1 };
   }
   if (cmd.includes('DELETE FROM SALE_ITEMS')) {
-    memory_storage.sale_items = memory_storage.sale_items.filter(x => x.sale_id != params[0]);
+    memory_storage.sale_items = memory_storage.sale_items.filter(x => String(x.sale_id) !== String(params[0]));
     return { rows: [], rowCount: 1 };
   }
 
