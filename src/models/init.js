@@ -6,7 +6,7 @@ const initModels = async () => {
     // Users
     await db.query(`
       CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
         password TEXT NOT NULL
       )
@@ -15,7 +15,7 @@ const initModels = async () => {
     // Products
     await db.query(`
       CREATE TABLE IF NOT EXISTS products (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY,
         code TEXT UNIQUE NOT NULL,
         name TEXT NOT NULL,
         dimensions TEXT,
@@ -25,28 +25,28 @@ const initModels = async () => {
         unit TEXT DEFAULT 'dona',
         cost_price_dollar REAL DEFAULT 0,
         sale_price_dollar REAL DEFAULT 0,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
     // Sales
     await db.query(`
       CREATE TABLE IF NOT EXISTS sales (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY,
         client_name TEXT NOT NULL,
         client_phone TEXT,
         total_sum REAL DEFAULT 0,
         paid_sum REAL DEFAULT 0,
         debt_sum REAL DEFAULT 0,
         usd_rate REAL DEFAULT 12800,
-        sold_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        sold_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     `);
 
     // Sale Items
     await db.query(`
       CREATE TABLE IF NOT EXISTS sale_items (
-        id SERIAL PRIMARY KEY,
+        id INTEGER PRIMARY KEY,
         sale_id INTEGER,
         product_id INTEGER,
         product_code TEXT,

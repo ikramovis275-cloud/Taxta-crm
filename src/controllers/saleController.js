@@ -23,7 +23,7 @@ exports.createSale = async (req, res) => {
     // 1. Sotuvni yaratish
     const saleRes = await db.query(`
       INSERT INTO sales (client_name, client_phone, total_sum, paid_sum, debt_sum, usd_rate)
-      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
+      VALUES ($1, $2, $3, $4, $5, $6)
     `, [client_name, client_phone, total_sum, paid_sum, debt_sum, usd_rate]);
     
     const saleId = saleRes.rows[0].id;

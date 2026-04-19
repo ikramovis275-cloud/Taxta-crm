@@ -31,18 +31,33 @@ if (connectionString) {
 }
 
 const query = async (text, params) => {
-  if (pool) return pool.query(text, params);
+  console.log(`🔍 [DB Query]: ${text.trim().substring(0, 100)}...`, params);
+  
+  if (pool) {
+    try {
+      return await pool.query(text, params);
+    } catch (err) {
+      console.error('❌ [PG Error]:', err.message);
+      throw err;
+    }
+  }
   
   if (sqliteDb) {
     const sql = text.replace(/\$(\d+)/g, '?');
     return new Promise((resolve, reject) => {
       if (text.trim().toUpperCase().startsWith('SELECT')) {
         sqliteDb.all(sql, params, (err, rows) => {
-          if (err) reject(err); else resolve({ rows });
+          if (err) {
+            console.error('❌ [SQLite Error]:', err.message);
+            reject(err);
+          } else resolve({ rows });
         });
       } else {
         sqliteDb.run(sql, params, function(err) {
-          if (err) reject(err); else resolve({ rows: [{ id: this.lastID }], rowCount: this.changes });
+          if (err) {
+            console.error('❌ [SQLite Error]:', err.message);
+            reject(err);
+          } else resolve({ rows: [{ id: this.lastID }], rowCount: this.changes });
         });
       }
     });

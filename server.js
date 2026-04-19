@@ -28,17 +28,17 @@ app.get('/', (req, res) => {
 // Start
 const start = async () => {
   await initModels();
-  app.listen(PORT, '0.0.0.0', () => {
+  app.listen(PORT, () => {
     console.log(`🚀 Server ishga tushdi: http://localhost:${PORT}`);
   });
 
-  // Keep-alive Cron
-  const cron = require('node-cron');
-  const backendUrl = process.env.BACKEND_URL || `https://taxta-crm-8.onrender.com`;
-  cron.schedule('*/3 * * * * *', () => {
-    const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-    fetch(backendUrl).catch(() => {});
-  });
+  // Keep-alive Cron (Faqat Render uchun, localhostda shart emas)
+  // const cron = require('node-cron');
+  // const backendUrl = process.env.BACKEND_URL || `https://taxta-crm-8.onrender.com`;
+  // cron.schedule('*/3 * * * * *', () => {
+  //   const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+  //   fetch(backendUrl).catch(() => {});
+  // });
 };
 
 start();

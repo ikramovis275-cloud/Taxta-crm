@@ -12,13 +12,16 @@ exports.getProducts = async (req, res) => {
 exports.createProduct = async (req, res) => {
   const { code, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar } = req.body;
   try {
-    const { rows } = await db.query(`
+    const result = await db.query(`
       INSERT INTO products (code, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
     `, [code, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar]);
-    res.status(201).json(rows[0]);
+    
+    // Yangi ID ni olish
+    const newId = result.rows[0]?.id || Date.now();
+    res.status(201).json({ id: newId, code, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar });
   } catch (err) {
-    if (err.message.includes('unique')) return res.status(400).json({ error: "Ushbu kodli mahsulot allaqachon mavjud" });
+    if (err.message.toLowerCase().includes('unique')) return res.status(400).json({ error: "Ushbu kodli mahsulot allaqachon mavjud" });
     res.status(500).json({ error: err.message });
   }
 };
@@ -34,6 +37,7 @@ exports.updateProduct = async (req, res) => {
     
     res.json({ id, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar });
   } catch (err) {
+    if (err.message.toLowerCase().includes('unique')) return res.status(400).json({ error: "Ushbu kodli mahsulot allaqachon mavjud" });
     res.status(500).json({ error: err.message });
   }
 };
