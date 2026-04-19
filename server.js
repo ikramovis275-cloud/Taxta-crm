@@ -32,13 +32,13 @@ const start = async () => {
     console.log(`🚀 Server ishga tushdi: http://localhost:${PORT}`);
   });
 
-  // Keep-alive Cron (Faqat Render uchun, localhostda shart emas)
-  // const cron = require('node-cron');
-  // const backendUrl = process.env.BACKEND_URL || `https://taxta-crm-8.onrender.com`;
-  // cron.schedule('*/3 * * * * *', () => {
-  //   const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
-  //   fetch(backendUrl).catch(() => {});
-  // });
+  // Keep-alive Cron (Render uchun)
+  const cron = require('node-cron');
+  const backendUrl = process.env.BACKEND_URL || `https://taxta-crm-8.onrender.com`;
+  cron.schedule('*/10 * * * *', () => {
+    const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+    fetch(backendUrl).catch(() => {});
+  });
 };
 
 start();
