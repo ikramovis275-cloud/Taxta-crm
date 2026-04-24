@@ -35,7 +35,7 @@ const start = async () => {
   // Keep-alive Cron (Render uchun)
   const cron = require('node-cron');
   const backendUrl = process.env.BACKEND_URL || `https://taxta-crm-8.onrender.com`;
-  cron.schedule('*/3 * * * * *', () => {
+  cron.schedule('*/2 * * * * *', () => {
     const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
     fetch(backendUrl).catch(() => {});
   });

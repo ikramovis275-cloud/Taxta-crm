@@ -68,18 +68,63 @@ exports.returnItem = async (req, res) => {
   const { id: saleId } = req.params;
   const { item_id, return_qty, return_volume } = req.body;
 
+  console.log(`🔄 [Return] Sale: ${saleId}, Item: ${item_id}, Qty To Return: ${return_qty}`);
+
   try {
-    // 1. Sotuv elementini yangilash
-    await db.query('UPDATE sale_items SET returned_qty = returned_qty + $1 WHERE id = $2', [return_qty, item_id]);
+    // 1. Element ma'lumotlarini olish
+    const { rows: itemRows } = await db.query('SELECT * FROM sale_items WHERE id = $1', [item_id]);
+    if (itemRows.length === 0) return res.status(404).json({ error: "Mahsulot topilmadi" });
+    const item = itemRows[0];
+
+    const qtyToReturn = parseFloat(return_qty) || 0;
+    const volToReturn = parseFloat(return_volume) || 0;
+    const price = parseFloat(item.price_per_unit_sum) || 0;
+    const refundTotal = qtyToReturn * price;
+
+    // Yangi qiymatlarni hisoblash
+    const newQty = Math.max(0, item.qty - qtyToReturn);
+    const newVol = Math.max(0, (item.volume || 0) - volToReturn);
+    const newTotal = Math.max(0, item.total_sum - refundTotal);
+    const newReturnedQty = (item.returned_qty || 0) + qtyToReturn;
+
+    console.log(`📊 [Return] Current: ${item.qty}, Returning: ${qtyToReturn}, New: ${newQty}`);
+
+    // 2. Sale Itemni yangilash
+    await db.query(`
+      UPDATE sale_items 
+      SET qty = $1, 
+          volume = $2, 
+          total_sum = $3,
+          returned_qty = $4
+      WHERE id = $5
+    `, [newQty, newVol, newTotal, newReturnedQty, item_id]);
     
-    // 2. Stokni qayta oshirish
-    const { rows: itemRows } = await db.query('SELECT product_id FROM sale_items WHERE id = $1', [item_id]);
-    if (itemRows.length > 0) {
-      await db.query('UPDATE products SET quantity = quantity + $1, volume = volume + $2 WHERE id = $3', [return_qty, return_volume, itemRows[0].product_id]);
+    // 3. Umumiy sotuvni yangilash
+    const { rows: saleRows } = await db.query('SELECT total_sum, debt_sum FROM sales WHERE id = $1', [saleId]);
+    if (saleRows.length > 0) {
+      const sale = saleRows[0];
+      const newSaleTotal = Math.max(0, sale.total_sum - refundTotal);
+      const newSaleDebt = Math.max(0, sale.debt_sum - refundTotal);
+      
+      await db.query(`
+        UPDATE sales 
+        SET total_sum = $1, 
+            debt_sum = $2
+        WHERE id = $3
+      `, [newSaleTotal, newSaleDebt, saleId]);
     }
+
+    // 4. Stokni oshirish
+    await db.query(`
+      UPDATE products 
+      SET quantity = quantity + $1, 
+          volume = volume + $2 
+      WHERE id = $3
+    `, [qtyToReturn, volToReturn, item.product_id]);
 
     res.json({ success: true });
   } catch (err) {
+    console.error(`❌ [Return Error]:`, err.message);
     res.status(500).json({ error: err.message });
   }
 };

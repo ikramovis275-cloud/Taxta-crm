@@ -15,7 +15,7 @@ exports.updateUsdRate = async (req, res) => {
   if (!rate || isNaN(rate) || rate <= 0) return res.status(400).json({ error: "To'g'ri kurs kiriting" });
   try {
     await db.query(
-      "INSERT INTO settings (key, value) VALUES ('usd_rate', $1) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
+      "REPLACE INTO settings (key, value) VALUES ('usd_rate', $1)",
       [String(rate)]
     );
     res.json({ usd_rate: parseFloat(rate) });

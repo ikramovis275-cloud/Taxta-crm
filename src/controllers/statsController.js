@@ -11,6 +11,8 @@ exports.getStats = async (req, res) => {
     const totalSales = sales.length;
     const totalRevenue = sales.reduce((acc, s) => acc + (parseFloat(s.total_sum) || 0), 0);
 
+    const totalDebt = sales.reduce((acc, s) => acc + (parseFloat(s.debt_sum) || 0), 0);
+
     const dailyMap = {};
     sales.forEach(s => {
       const dateObj = s.sold_at ? new Date(s.sold_at) : new Date();
@@ -29,6 +31,7 @@ exports.getStats = async (req, res) => {
       totalSales,
       totalVolume,
       totalRevenue,
+      totalDebt,
       dailySales
     });
   } catch (err) {
