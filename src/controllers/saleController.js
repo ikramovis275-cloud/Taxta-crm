@@ -24,6 +24,7 @@ exports.createSale = async (req, res) => {
     const saleRes = await db.query(`
       INSERT INTO sales (client_name, client_phone, total_sum, paid_sum, debt_sum, usd_rate)
       VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id
     `, [client_name, client_phone, total_sum, paid_sum, debt_sum, usd_rate]);
     
     const saleId = saleRes.rows[0].id;

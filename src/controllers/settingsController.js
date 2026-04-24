@@ -14,10 +14,11 @@ exports.updateUsdRate = async (req, res) => {
   const { rate } = req.body;
   if (!rate || isNaN(rate) || rate <= 0) return res.status(400).json({ error: "To'g'ri kurs kiriting" });
   try {
-    await db.query(
-      "REPLACE INTO settings (key, value) VALUES ('usd_rate', $1)",
-      [String(rate)]
-    );
+    await db.query(`
+      INSERT INTO settings (key, value) 
+      VALUES ('usd_rate', $1)
+      ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value
+    `, [String(rate)]);
     res.json({ usd_rate: parseFloat(rate) });
   } catch (err) {
     res.status(500).json({ error: "Kursni yangilashda xatolik: " + err.message });

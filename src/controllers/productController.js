@@ -15,6 +15,7 @@ exports.createProduct = async (req, res) => {
     const result = await db.query(`
       INSERT INTO products (code, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id
     `, [code, name, dimensions, piece_volume, volume, quantity, unit, cost_price_dollar, sale_price_dollar]);
     
     // Yangi ID ni olish

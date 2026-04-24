@@ -28,7 +28,7 @@ app.get('/', (req, res) => {
 // Start
 const start = async () => {
   await initModels();
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server ishga tushdi: http://localhost:${PORT}`);
   });
 

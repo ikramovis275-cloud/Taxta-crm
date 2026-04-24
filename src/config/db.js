@@ -128,7 +128,7 @@ const query = async (text, params) => {
     return { rows: [item] };
   }
   if (cmd.includes('SELECT * FROM SALE_ITEMS')) {
-    if (cmd.includes('ID = $1')) {
+    if (cmd.includes(' WHERE ID = $1')) {
       const it = memory_storage.sale_items.find(x => String(x.id) === String(params[0]));
       return { rows: it ? [it] : [] };
     }
